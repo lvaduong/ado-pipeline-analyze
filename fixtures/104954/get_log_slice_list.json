@@ -1,0 +1,204 @@
+{
+  "ok": true,
+  "toolName": "get_log_slice",
+  "callId": "pinned-from-round5",
+  "isError": false,
+  "result": {
+    "ok": true,
+    "source": "pinned-fixture",
+    "buildId": 104954,
+    "logs": [
+      {
+        "id": 1,
+        "lineCount": 1237,
+        "type": "Container"
+      },
+      {
+        "id": 2,
+        "lineCount": 2187,
+        "type": "Container"
+      },
+      {
+        "id": 3,
+        "lineCount": 47,
+        "type": "Container"
+      },
+      {
+        "id": 4,
+        "lineCount": 82,
+        "type": "Container"
+      },
+      {
+        "id": 5,
+        "lineCount": 11,
+        "type": "Container"
+      },
+      {
+        "id": 6,
+        "lineCount": 14,
+        "type": "Container"
+      },
+      {
+        "id": 7,
+        "lineCount": 19,
+        "type": "Container"
+      },
+      {
+        "id": 8,
+        "lineCount": 335,
+        "type": "Container"
+      },
+      {
+        "id": 9,
+        "lineCount": 1299,
+        "type": "Container"
+      },
+      {
+        "id": 10,
+        "lineCount": 33,
+        "type": "Container"
+      },
+      {
+        "id": 11,
+        "lineCount": 1417,
+        "type": "Container"
+      },
+      {
+        "id": 12,
+        "lineCount": 19,
+        "type": "Container"
+      },
+      {
+        "id": 13,
+        "lineCount": 48,
+        "type": "Container"
+      },
+      {
+        "id": 14,
+        "lineCount": 29,
+        "type": "Container"
+      },
+      {
+        "id": 15,
+        "lineCount": 30,
+        "type": "Container"
+      },
+      {
+        "id": 16,
+        "lineCount": 6,
+        "type": "Container"
+      },
+      {
+        "id": 17,
+        "lineCount": 11,
+        "type": "Container"
+      },
+      {
+        "id": 18,
+        "lineCount": 6,
+        "type": "Container"
+      },
+      {
+        "id": 19,
+        "lineCount": 3351,
+        "type": "Container"
+      },
+      {
+        "id": 20,
+        "lineCount": 47,
+        "type": "Container"
+      },
+      {
+        "id": 21,
+        "lineCount": 83,
+        "type": "Container"
+      },
+      {
+        "id": 22,
+        "lineCount": 11,
+        "type": "Container"
+      },
+      {
+        "id": 23,
+        "lineCount": 14,
+        "type": "Container"
+      },
+      {
+        "id": 24,
+        "lineCount": 19,
+        "type": "Container"
+      },
+      {
+        "id": 25,
+        "lineCount": 335,
+        "type": "Container"
+      },
+      {
+        "id": 26,
+        "lineCount": 1299,
+        "type": "Container"
+      },
+      {
+        "id": 27,
+        "lineCount": 33,
+        "type": "Container"
+      },
+      {
+        "id": 28,
+        "lineCount": 2500,
+        "type": "Container"
+      },
+      {
+        "id": 29,
+        "lineCount": 19,
+        "type": "Container"
+      },
+      {
+        "id": 30,
+        "lineCount": 24,
+        "type": "Container"
+      },
+      {
+        "id": 31,
+        "lineCount": 34,
+        "type": "Container"
+      },
+      {
+        "id": 32,
+        "lineCount": 35,
+        "type": "Container"
+      },
+      {
+        "id": 33,
+        "lineCount": 6,
+        "type": "Container"
+      },
+      {
+        "id": 34,
+        "lineCount": 20,
+        "type": "Container"
+      },
+      {
+        "id": 35,
+        "lineCount": 11,
+        "type": "Container"
+      },
+      {
+        "id": 36,
+        "lineCount": 6,
+        "type": "Container"
+      },
+      {
+        "id": 37,
+        "lineCount": 4440,
+        "type": "Container"
+      },
+      {
+        "id": 38,
+        "lineCount": 2,
+        "type": "Container"
+      }
+    ],
+    "hint": "Pick a logId and call get_log_slice again."
+  }
+}

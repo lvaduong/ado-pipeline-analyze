@@ -17,6 +17,9 @@ Set on the host (never paste into chat or commit):
 | --- | --- |
 | `AZURE_DEVOPS_ORG_URL` | Org base URL, e.g. `https://dev.azure.com/YourOrg` |
 | `AZURE_DEVOPS_PAT` | PAT with Build Read + Test Results Read |
+| `AZURE_DEVOPS_FIXTURE_BUILD` | Optional. e.g. `104954` — serve `fixtures/{id}/` JSON (no live Azure) |
+| `AZURE_DEVOPS_USE_FIXTURES` | Optional. `1` — prefer pinned fixtures for matching buildIds even if PAT is set |
+| `AZURE_DEVOPS_FIXTURE_DIR` | Optional override of fixtures root (default: `./fixtures`) |
 | `DNA_AUTOMATION_TEST_ROOT` | Optional path to local `dna-automation-test` checkout (default `~/Documents/dna-automation-test`) |
 | `CURSOR_API_KEY` | Cursor credential for model turns (`run` / `eval` / playground) |
 
@@ -47,5 +50,7 @@ npx --yes "@grok/agent-sdk@0.7.2" dev .
 
 ## Evals / fixtures
 
-- `evals/` — smoke, RCA shape, Azure-tools-only, tool-budget, log-slice-when-thin, resolve-test-source
-- `fixtures/104954/` — pinned Azure tool JSON (no secrets)
+- `evals/` — smoke, RCA shape, Azure-tools-only, tool-budget, log-slice-when-thin, resolve-test-source  
+  (`purpose=eval` → inline fixtures, no Azure PAT / no `fixtures/104954` disk reads)
+- `fixtures/104954/` — pinned Azure tool JSON for offline smoke of build 104954 (no secrets).  
+  Used when `AZURE_DEVOPS_FIXTURE_BUILD=104954`, `AZURE_DEVOPS_USE_FIXTURES=1`, or PAT unset + matching build URL.

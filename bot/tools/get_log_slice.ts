@@ -12,6 +12,11 @@ import {
   readCreds,
   sliceText,
 } from "../lib/azure-devops.js";
+import {
+  loadPinnedFixture,
+  missingPinnedFixture,
+  resolvePinnedBuildId,
+} from "../lib/pinned-fixtures.js";
 
 type LogsList = {
   count?: number;
@@ -72,6 +77,18 @@ export default defineTool({
         error:
           "get_log_slice needs a buildId. Pass a build results URL or bare build id.",
       };
+    }
+
+    const pinnedId = resolvePinnedBuildId(parsed.buildId);
+    if (pinnedId != null) {
+      if (!logId) {
+        const list = loadPinnedFixture(pinnedId, "get_log_slice_list");
+        return list ?? missingPinnedFixture(pinnedId, "get_log_slice_list");
+      }
+      const slice = loadPinnedFixture(pinnedId, `get_log_slice_${logId}`);
+      return (
+        slice ?? missingPinnedFixture(pinnedId, `get_log_slice_${logId}`)
+      );
     }
 
     const credsResult = readCreds();

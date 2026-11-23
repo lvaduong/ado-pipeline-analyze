@@ -7,6 +7,11 @@ import {
   parseRunRef,
   readCreds,
 } from "../lib/azure-devops.js";
+import {
+  loadPinnedFixture,
+  missingPinnedFixture,
+  resolvePinnedBuildId,
+} from "../lib/pinned-fixtures.js";
 
 type Build = {
   id: number;
@@ -61,6 +66,12 @@ export default defineTool({
     const parsed = parseRunRef({ runUrlOrId, project, orgUrl });
     if ("error" in parsed) {
       return { ok: false as const, error: parsed.error };
+    }
+
+    const pinnedId = resolvePinnedBuildId(parsed.buildId);
+    if (pinnedId != null) {
+      const fixture = loadPinnedFixture(pinnedId, "get_run_summary");
+      return fixture ?? missingPinnedFixture(pinnedId, "get_run_summary");
     }
 
     const credsResult = readCreds();

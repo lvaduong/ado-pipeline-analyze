@@ -10,6 +10,11 @@ import {
   parseRunRef,
   readCreds,
 } from "../lib/azure-devops.js";
+import {
+  loadPinnedFixture,
+  missingPinnedFixture,
+  resolvePinnedBuildId,
+} from "../lib/pinned-fixtures.js";
 
 type TestResult = {
   id: number;
@@ -74,6 +79,27 @@ export default defineTool({
     const parsed = parseRunRef({ runUrlOrId, project, orgUrl });
     if ("error" in parsed) {
       return { ok: false as const, error: parsed.error };
+    }
+
+    const pinnedId = resolvePinnedBuildId(parsed.buildId);
+    if (pinnedId != null) {
+      const byRun =
+        runId != null
+          ? loadPinnedFixture(pinnedId, `list_failed_tests_${runId}`)
+          : null;
+      const fixture =
+        byRun ??
+        loadPinnedFixture(pinnedId, "list_failed_tests_default") ??
+        loadPinnedFixture(pinnedId, "list_failed_tests_33786");
+      return (
+        fixture ??
+        missingPinnedFixture(
+          pinnedId,
+          runId != null
+            ? `list_failed_tests_${runId}`
+            : "list_failed_tests_default",
+        )
+      );
     }
 
     const credsResult = readCreds();
