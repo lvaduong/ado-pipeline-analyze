@@ -26,18 +26,26 @@ agent still analyzes from that text.
 ## Local loop
 
 ```bash
+cd ~/Documents/mips-pipeline-test-fixer   # or your clone
+npm install                              # once
+# secrets: shell exports or local .env (gitignored) — see table above
 npx --yes "@grok/agent-sdk@0.7.2" validate --dir .
 npx tsc --noEmit -p .
 npx --yes "@grok/agent-sdk@0.7.2" tool call get_run_summary --dir . --input '{"runUrlOrId":"https://dev.azure.com/example/Mips/_build/results?buildId=1001"}' --json
 npx --yes "@grok/agent-sdk@0.7.2" run --dir . --message "Analyze https://dev.azure.com/example/Mips/_build/results?buildId=1001"
+npx --yes "@grok/agent-sdk@0.7.2" eval --dir .
 npx --yes "@grok/agent-sdk@0.7.2" dev .
 # playground: http://127.0.0.1:3000/playground
-npx --yes "@grok/agent-sdk@0.7.2" eval --dir .
 ```
 
 ## Tools
 
 - `get_run_summary` — build / test-run summary
 - `list_failed_tests` — failed tests with error + stack
-- `resolve_test_source` — map failed test names/stacks → paths in local `dna-automation-test`
 - `get_log_slice` — bounded build log slice
+- `resolve_test_source` — map failed test names/stacks → paths in local `dna-automation-test`
+
+## Evals / fixtures
+
+- `evals/` — smoke, RCA shape, Azure-tools-only, tool-budget, log-slice-when-thin, resolve-test-source
+- `fixtures/104954/` — pinned Azure tool JSON (no secrets)
