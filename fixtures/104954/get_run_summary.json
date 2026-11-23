@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "toolName": "get_run_summary",
+  "callId": "tool_get_run_summary_b282786fd226505b",
+  "isError": false,
+  "result": {
+    "ok": true,
+    "source": "azure-devops",
+    "project": "dna-mops-MIPS",
+    "buildId": 104954,
+    "buildNumber": "20261123.1",
+    "result": "failed",
+    "status": "completed",
+    "sourceBranch": "refs/heads/main",
+    "definitionName": "UAT-MIPS-Automation-No-Cron",
+    "webUrl": "https://dev.azure.com/MODEC-DnA/65af4ae1-8ef2-4aab-b1d9-968a136e6596/_build/results?buildId=104954",
+    "testRuns": [
+      {
+        "id": 33786,
+        "name": "MIPS - uat - no-cron-parallel",
+        "totalTests": 56,
+        "passedTests": 54,
+        "state": "Completed"
+      },
+      {
+        "id": 33794,
+        "name": "MIPS - uat - no-cron-environment-exclusive",
+        "totalTests": 21,
+        "passedTests": 5,
+        "state": "Completed"
+      }
+    ]
+  },
+  "durationMs": 514
+}

@@ -1,0 +1,10 @@
+node_modules/
+.agent-serve/
+.env
+.env.*
+secrets/
+secrets
+*.pem
+*.key
+hillclimb-traces/
+memory
