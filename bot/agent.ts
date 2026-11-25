@@ -9,9 +9,9 @@ export default defineAgent({
       { id: "fast", value: "true" },
     ],
   },
-  // Empty allowlist keeps host shell/grep/read/glob/ls/task off.
-  // Local re-run is only the authored server tool rerun_local_spec
-  // (fixed cwd + one UAT spec command). Agent SDK still injects mcp
-  // so bot/tools/* remain available (playground + HTTP unchanged).
+  // Empty allowlist keeps host shell/grep/read/glob/ls/edit off.
+  // Local re-run is rerun_local_spec. Automation edits are
+  // read_automation_source + apply_automation_fix (checkout .ts only).
+  // Agent SDK still injects mcp so bot/tools/* stay available.
   tools: [],
 });

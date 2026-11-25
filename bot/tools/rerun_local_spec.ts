@@ -14,7 +14,7 @@ export default defineTool({
   description:
     "Re-run one hard-failed or flaky MIPS spec locally before the verdict. Fixed cwd " +
     `${CHECKOUT_ROOT}. The only command is \`${COMMAND}\`. Pass one spec path per failing theme. ` +
-    "Returns exit code and Playwright counts (failed, flaky, passed), not the log. " +
+    "On local-passed, returns exit code and counts only. On local-reproduced, also returns a short failure excerpt: the Playwright Error line, expected/received values, and the first spec or page-object file:line. Not the full log. " +
     "If this tool is unavailable or the checkout is missing, stop and say so under Evidence gaps. Do not ask the user to paste a command.",
   execution: "server",
   effect: "write",
@@ -53,6 +53,12 @@ export default defineTool({
         timedOut: false,
         summary: { failed: 1, flaky: 0, passed: 0 },
         localResult: "local-reproduced" as const,
+        failure: {
+          error: "Error: expect(locator).toBeVisible() failed",
+          expected: "visible",
+          received: "hidden",
+          frame: "projects/mips/src/pages/requisition-details-page.ts:42",
+        },
       };
     }
 
@@ -77,11 +83,18 @@ export default defineTool({
       timeoutMs: RERUN_TIMEOUT_MS,
       summary: outcome.summary,
       localResult: outcome.localResult,
+      ...(outcome.localResult === "local-reproduced"
+        ? { failure: outcome.failure }
+        : {}),
       hint: outcome.timedOut
         ? "Runner hit the 15-minute timeout before a finished exit code. Say so under Evidence gaps. Do not label local-passed."
-        : outcome.summary == null
-          ? "Playwright summary lines were not found. Use exitCode for local-reproduced (non-zero) or local-passed (zero). Do not invent counts."
-          : "Cite exitCode and summary counts. Put localResult on the Verdict line.",
+        : outcome.localResult === "local-passed"
+          ? "local-passed: cite the counts only. Do not invent an error line or frame."
+          : outcome.localResult === "local-reproduced"
+            ? "local-reproduced: put failure.error, expected, received, and frame in Likely cause, and adjust Proposed fixes from that frame. Do not stop at exit code and counts."
+            : outcome.summary == null
+              ? "Playwright summary lines were not found. Use exitCode for local-reproduced (non-zero) or local-passed (zero). Do not invent counts."
+              : "Cite exitCode and summary counts. Put localResult on the Verdict line.",
     };
   },
 });

@@ -23,6 +23,17 @@ export type PlaywrightSummary = {
 
 export type LocalResult = "local-reproduced" | "local-passed";
 
+/** Short failure excerpt. Omitted entirely when the spec passes. */
+export type FailureExcerpt = {
+  error: string;
+  expected?: string;
+  received?: string;
+  frame?: string;
+};
+
+const MAX_ERROR_CHARS = 240;
+const MAX_VALUE_CHARS = 180;
+
 export function normalizeSpecPath(
   input: string,
 ): { ok: true; specPath: string } | { ok: false; error: string } {
@@ -75,6 +86,120 @@ export function classifyLocalResult(
   return "local-passed";
 }
 
+/**
+ * First Playwright failure in the log tail, capped.
+ * Error line, expected/received values, and the first spec or page-object frame.
+ * Returns null when those lines are absent (including a clean pass).
+ */
+export function parseFailureExcerpt(log: string): FailureExcerpt | null {
+  const text = stripAnsi(log);
+  const summaryAt = text.search(/(?:^|\n)\s*\d+\s+failed\b/);
+  const window =
+    summaryAt >= 0 ? text.slice(Math.max(0, summaryAt - 8_000), summaryAt) : text.slice(-8_000);
+  const headers = [...window.matchAll(/(?:^|\n)\s*\d+\)\s/g)];
+  const block =
+    headers.length > 0
+      ? window.slice(headers[headers.length - 1].index ?? 0)
+      : window;
+
+  const errorMatch = block.match(/(?:^|\n)\s*(Error:.*)/);
+  if (errorMatch?.[1] == null) {
+    return null;
+  }
+
+  const expected = firstValue(block, "Expected");
+  const received = firstValue(block, "Received");
+  const frame = firstSpecOrPageFrame(block) ?? frameFromHeader(block);
+
+  return {
+    error: cap(errorMatch[1], MAX_ERROR_CHARS),
+    ...(expected != null ? { expected } : {}),
+    ...(received != null ? { received } : {}),
+    ...(frame != null ? { frame } : {}),
+  };
+}
+
+function stripAnsi(value: string): string {
+  return value.replace(/\u001b\[[0-9;]*m/g, "");
+}
+
+function cap(value: string, max: number): string {
+  const clean = value.replace(/\s+/g, " ").trim();
+  if (clean.length <= max) {
+    return clean;
+  }
+  return `${clean.slice(0, max - 1)}…`;
+}
+
+function firstValue(block: string, label: "Expected" | "Received"): string | null {
+  const labeled = block.match(
+    new RegExp(String.raw`(?:^|\n)\s*${label}\b[^:\n]*:\s*(.+)`),
+  );
+  if (labeled?.[1] != null && labeled[1].trim() !== "") {
+    return cap(labeled[1], MAX_VALUE_CHARS);
+  }
+  const sign = label === "Expected" ? "-" : "\\+";
+  const diff = block.match(
+    new RegExp(String.raw`(?:^|\n)\s*${sign} ${label}\s*\n([^\n]+)`),
+  );
+  if (diff?.[1] == null) {
+    return null;
+  }
+  return cap(diff[1].replace(/^\s*[+-]\s*/, ""), MAX_VALUE_CHARS);
+}
+
+function firstSpecOrPageFrame(block: string): string | null {
+  const frames = block.matchAll(
+    /(?:^|\n)\s*at (?:async )?(?:[^\n]*?\()?([^\s()]+?):(\d+)(?::\d+)?\)?/g,
+  );
+  for (const match of frames) {
+    const file = match[1];
+    if (file == null || match[2] == null) {
+      continue;
+    }
+    if (file.includes("node_modules") || !isSpecOrPage(file)) {
+      continue;
+    }
+    return `${toRepoPath(file)}:${match[2]}`;
+  }
+  return null;
+}
+
+function frameFromHeader(block: string): string | null {
+  const header = block.match(/›\s+([^\s›]+?\.spec\.ts):(\d+):\d+/);
+  if (header?.[1] == null || header[2] == null) {
+    return null;
+  }
+  return `${toRepoPath(header[1])}:${header[2]}`;
+}
+
+function isSpecOrPage(file: string): boolean {
+  const norm = file.replace(/\\/g, "/");
+  return (
+    norm.endsWith(".spec.ts") ||
+    norm.endsWith("-page.ts") ||
+    norm.includes("/pages/")
+  );
+}
+
+function toRepoPath(file: string): string {
+  const norm = file.replace(/\\/g, "/");
+  const checkout = "/dna-automation-test/";
+  const checkoutAt = norm.indexOf(checkout);
+  if (checkoutAt >= 0) {
+    return norm.slice(checkoutAt + checkout.length);
+  }
+  const projectsAt = norm.indexOf("projects/");
+  if (projectsAt >= 0) {
+    return norm.slice(projectsAt);
+  }
+  const packagesAt = norm.indexOf("packages/");
+  if (packagesAt >= 0) {
+    return norm.slice(packagesAt);
+  }
+  return norm;
+}
+
 function lastCount(tail: string, label: "failed" | "flaky" | "passed"): number | null {
   const matches = tail.matchAll(
     new RegExp(String.raw`(?:^|\n)\s*(\d+)\s+${label}\b`, "g"),
@@ -114,6 +239,7 @@ type RunOutcome = {
   timedOut: boolean;
   summary: PlaywrightSummary | null;
   localResult: LocalResult | null;
+  failure: FailureExcerpt | null;
 };
 
 type RunFailure = {
@@ -196,15 +322,17 @@ export async function runLocalSpec(specPath: string): Promise<RunOutcome | RunFa
     child.on("close", (code) => {
       const summary = parsePlaywrightSummary(tail);
       const exitCode = code;
+      const localResult =
+        exitCode == null || timedOut
+          ? null
+          : classifyLocalResult(exitCode, summary);
       finish({
         ok: true,
         exitCode,
         timedOut,
         summary,
-        localResult:
-          exitCode == null || timedOut
-            ? null
-            : classifyLocalResult(exitCode, summary),
+        localResult,
+        failure: localResult === "local-reproduced" ? parseFailureExcerpt(tail) : null,
       });
     });
   });
