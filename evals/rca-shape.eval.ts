@@ -25,5 +25,6 @@ export default defineEval({
     );
     t.check(t.reply, includes(/9001|9002/));
     t.check(t.reply, includes(/Proposed fixes/i));
+    t.check(t.reply, includes(/local-reproduced|local-passed/));
   },
 });

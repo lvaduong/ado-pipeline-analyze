@@ -25,6 +25,7 @@ Never ask the user to paste a PAT into chat. Credentials live only in env:
 | `get_run_summary` | **Once** first when you have a URL/id. Learn result, branch, definition, linked test runs. |
 | `list_failed_tests` | After summary. **Once per distinct failing `runId`** from summary. Default without `runId` only covers the first failing run. |
 | `resolve_test_source` | After `list_failed_tests`. Map failing titles / stacks → repo paths under the local `dna-automation-test` checkout. Batch queries (result id + testName + short stack). Prefer this over host filesystem tools. |
+| `rerun_local_spec` | After `resolve_test_source`. One hard-failed or flaky spec per call. The only command, cwd fixed to `/Users/duong.lemodec.com/Documents/dna-automation-test`: `ENV=uat npm run test -w projects/mips -- <spec path under projects/mips/tests>`. |
 | `get_log_slice` | When stacks are **insufficient** for a class (rule below). Omit `logId` once to list logs, then one small slice. |
 
 ### Call budget / no duplicates
@@ -35,8 +36,9 @@ Stay within this budget for a normal mixed build (parallel + exclusive):
 2. `list_failed_tests` — **once per failing `runId`** from that summary (typically 1–2 calls). Do **not** re-call the same `runId` with/without `project`, or because `capped: true`. If capped, summarize the listed theme and note the cap under Evidence gaps.
 3. `get_log_slice` — list logs **once** (omit `logId`), then **one** end slice of the parallel/UI job. Retry **at most one** other `logId` only if that first slice is exclusive Celery/`IGNORED` noise. Hard cap: **≤3** `get_log_slice` calls total. No multi-offset probes of the same log.
 4. `resolve_test_source` — **once** (batch themes). See below.
+5. `rerun_local_spec` — **once per distinct spec** for each hard-failed and flaky theme, after resolve. Not host `shell`. Do not pass page objects, helpers, or more than one spec per call.
 
-Do **not** re-fetch to “confirm” a successful tool result. Target **≤7** tool calls for a two-run build (1 summary + 2 lists + ≤3 log + 1 resolve).
+Do **not** re-fetch to “confirm” a successful tool result. Target **≤7** Azure/resolve calls for a two-run build (1 summary + 2 lists + ≤3 log + 1 resolve), plus one `rerun_local_spec` per distinct spec.
 
 ### When to call `get_log_slice`
 
@@ -52,7 +54,7 @@ Budget detail: omit `logId` **once** to list logs, then **one** end-of-log slice
 
 If a tool returns `missingSecrets`, do **not** retry Azure. Ask for a pasted run URL/id plus log snippets, then analyze those.
 
-**Azure + resolve only for pipeline RCA.** Allowed: `get_run_summary`, `list_failed_tests`, `resolve_test_source`, `get_log_slice`. Do **not** call host `shell`, `grep`, `read`, `glob`, `ls`, or any other filesystem tool — including to open spilled/`agent-tools` files or to search the test repo. Use `resolve_test_source` for local path mapping. If a tool result looks truncated, lower `maxResults` (e.g. 8–12) and/or call `get_log_slice`; never shell-parse JSON. When many failures share one error theme, list the theme once with the cited result ids rather than re-fetching full stacks.
+**Azure tools plus one local re-run.** Allowed: `get_run_summary`, `list_failed_tests`, `resolve_test_source`, `get_log_slice`, and `rerun_local_spec`. Do **not** call host `shell`, `grep`, `read`, `glob`, `ls`, or any other filesystem tool — including to open spilled/`agent-tools` files or to search the test repo. The host-shell ban does not apply to `rerun_local_spec`: that tool is the only allowed command, and it runs only `ENV=uat npm run test -w projects/mips -- <spec path under projects/mips/tests>` with cwd fixed to `/Users/duong.lemodec.com/Documents/dna-automation-test`. Use `resolve_test_source` for local path mapping. If a tool result looks truncated, lower `maxResults` (e.g. 8–12) and/or call `get_log_slice`; never shell-parse JSON. When many failures share one error theme, list the theme once with the cited result ids rather than re-fetching full stacks.
 
 ### When to call `resolve_test_source`
 
@@ -60,11 +62,15 @@ If a tool returns `missingSecrets`, do **not** retry Azure. Ask for a pasted run
 
 **Skip** only when the checkout is reported missing (`ok: false`) — then note that under Evidence gaps and still propose fixes from stack path strings alone.
 
+Re-run each hard-failed and flaky spec with `rerun_local_spec` (that command) before the verdict.
+In Verdict, add the local result: `local-reproduced` or `local-passed`.
+If the runner is missing or the checkout is missing, stop and say so under Evidence gaps. Do not ask the user to paste a command.
+
 ## Output shape
 
 Reply with this structure (skip empty sections):
 
-1. **Verdict** — one line that names root-cause **class label(s)** in backticks (examples: `ui-visibility`, `spa-auth-callback`, `hrgps-sync-contention`, `assertion-bug`, `env-config`, `flaky-infra`). Separate multiple classes with `+`.
+1. **Verdict** — one line that names root-cause **class label(s)** in backticks (examples: `ui-visibility`, `spa-auth-callback`, `hrgps-sync-contention`, `assertion-bug`, `env-config`, `flaky-infra`). Separate multiple classes with `+`. Add each spec's local result: `local-reproduced` or `local-passed`.
 2. **Failed tests** — group by `runId`. For each failure (or each theme), cite **test result `id`** from `list_failed_tests` plus TC/title + short error.
 3. **Likely cause** — 2–4 sentences grounded in evidence; map each class label to the runs/ids that support it.
 4. **Proposed fixes** — numbered, concrete. When `resolve_test_source` returns matches, **cite those repo-relative paths** (e.g. `projects/mips/...`). Otherwise cite only paths that stacks/logs already showed.

@@ -22,7 +22,8 @@ export default defineEval({
     t.notCalledTool("grep");
     t.notCalledTool("read");
     t.notCalledTool("glob");
-    t.maxToolCalls(7);
+    t.calledTool("rerun_local_spec");
+    t.maxToolCalls(9);
     t.check(t.reply, includes(/Verdict/i));
     t.check(t.reply, includes(/9001|9002/));
     t.check(t.reply, includes(/Proposed fixes/i));

@@ -20,7 +20,7 @@ export default defineEval({
     t.notCalledTool("shell");
     t.notCalledTool("grep");
     t.notCalledTool("read");
-    t.maxToolCalls(7);
+    t.maxToolCalls(9);
     t.check(t.reply, includes(/Verdict/i));
     t.check(
       t.reply,

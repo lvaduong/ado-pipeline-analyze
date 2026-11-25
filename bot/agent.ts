@@ -9,8 +9,9 @@ export default defineAgent({
       { id: "fast", value: "true" },
     ],
   },
-  // Pipeline RCA must stay on Azure MCP tools only. Empty allowlist
-  // disables host shell/grep/read/glob/ls/task; Agent SDK still injects mcp
+  // Empty allowlist keeps host shell/grep/read/glob/ls/task off.
+  // Local re-run is only the authored server tool rerun_local_spec
+  // (fixed cwd + one UAT spec command). Agent SDK still injects mcp
   // so bot/tools/* remain available (playground + HTTP unchanged).
   tools: [],
 });
