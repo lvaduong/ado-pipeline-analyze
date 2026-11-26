@@ -37,7 +37,7 @@ type TestRunsList = {
 
 export default defineTool({
   description:
-    "Fetch an Azure Pipelines build / test-run summary (result, branch, definition, linked test runs). Call exactly once first with the user URL/id as runUrlOrId — never empty. Do not retry with project/orgUrl after ok:true; use returned testRuns[].id for list_failed_tests. Needs AZURE_DEVOPS_ORG_URL + AZURE_DEVOPS_PAT, or returns a missing-secrets hint so you can use pasted logs instead.",
+    "Fetch an Azure Pipelines build / test-run summary (result, branch, definition, linked test runs). Call exactly once first with a single build/test-run URL or bare numeric id as runUrlOrId — never empty. Do NOT pass a pipeline folder path (e.g. \\mips-qc\\UAT) or a _build?definitionScope=… URL here — use list_folder_latest_runs for those. Do not retry with project/orgUrl after ok:true; use returned testRuns[].id for list_failed_tests. Needs AZURE_DEVOPS_ORG_URL + AZURE_DEVOPS_PAT, or returns a missing-secrets hint so you can use pasted logs instead.",
   execution: "server",
   effect: "read",
   inputSchema: z.object({

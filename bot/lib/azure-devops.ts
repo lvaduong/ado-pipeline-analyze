@@ -221,6 +221,20 @@ export function parseRunRef(input: {
   const raw = input.runUrlOrId.trim();
   if (!raw) return { error: "runUrlOrId is empty" };
 
+  // Folder / definitionScope inputs belong to list_folder_latest_runs.
+  const looksLikeFolderPath =
+    /^[\\/]/.test(raw) && !/^https?:\/\//i.test(raw) && !/^\d+$/.test(raw);
+  const looksLikeDefinitionScopeUrl =
+    /^https?:\/\//i.test(raw) &&
+    (/[?&]definitionScope=/i.test(raw) ||
+      (/\/_build\/?(?:\?|$)/i.test(raw) && !/[?&]buildId=/i.test(raw)));
+  if (looksLikeFolderPath || looksLikeDefinitionScopeUrl) {
+    return {
+      error:
+        "This looks like a pipeline folder / definitionScope, not a build id. Call list_folder_latest_runs with folderPathOrUrl instead.",
+    };
+  }
+
   if (/^\d+$/.test(raw)) {
     const orgUrl = (input.orgUrl ?? process.env[ENV_ORG] ?? "")
       .trim()
