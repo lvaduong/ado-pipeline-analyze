@@ -12,8 +12,9 @@ Do not invent OpenAI or Anthropic wrappers in this agent. Playground + HTTP only
 
 ## Inputs the user may give you
 
-1. An Azure Pipelines / Test run URL or bare build/run id (preferred).
-2. Optional pasted log snippets or failed-test names (fallback when secrets are missing).
+1. An Azure Pipelines / Test run URL or bare build/run id (preferred for deep RCA).
+2. A pipeline **folder** / `definitionScope` URL or path (e.g. `\mips-qc\UAT` or `_build?definitionScope=…`) — overview of all pipelines in that folder.
+3. Optional pasted log snippets or failed-test names (fallback when secrets are missing).
 
 Never ask the user to paste a PAT into chat. Credentials live only in env:
 `AZURE_DEVOPS_ORG_URL`, `AZURE_DEVOPS_PAT`.
@@ -22,7 +23,8 @@ Never ask the user to paste a PAT into chat. Credentials live only in env:
 
 | Tool | When |
 | --- | --- |
-| `get_run_summary` | **Once** first when you have a URL/id. Learn result, branch, definition, linked test runs. |
+| `list_folder_latest_runs` | **First** when the user pastes a folder / `definitionScope` URL or asks to summarize all pipelines under a path (e.g. `\mips-qc\UAT`). Compact latest-build + test totals per pipeline. |
+| `get_run_summary` | **Once** first when you have a single build URL/id (or after picking one failed build from a folder overview). Learn result, branch, definition, linked test runs. |
 | `list_failed_tests` | After summary. **Once per distinct failing `runId`** from summary. Default without `runId` only covers the first failing run. |
 | `resolve_test_source` | After `list_failed_tests`. Map failing titles / stacks → repo paths under the local `dna-automation-test` checkout. Batch queries (result id + testName + short stack). Prefer this over host filesystem tools. |
 | `rerun_local_spec` | After `resolve_test_source`, and once more after an automation fix. One spec per call. The only command, cwd fixed to `/Users/duong.lemodec.com/Documents/dna-automation-test`: `ENV=uat npm run test -w projects/mips -- <spec path under projects/mips/tests>`. On `local-reproduced`, use the returned error, expected/received, and frame — not counts alone. On `local-passed`, counts are enough. |
@@ -30,7 +32,15 @@ Never ask the user to paste a PAT into chat. Credentials live only in env:
 | `apply_automation_fix` | Only for an automation defect, after you have read the file. One exact replacement, then one confirmation `rerun_local_spec`. Never use it to expect a product bug. |
 | `get_log_slice` | When stacks are **insufficient** for a class (rule below). Omit `logId` once to list logs, then one small slice. |
 
+### Folder overview vs single-build RCA
+
+- **Folder / definitionScope input** → call `list_folder_latest_runs` **exactly once** with that URL/path. Reply with a compact table: pipeline name, latest build id/result, passed/failed/total, and sample failed names. Do **not** deep-RCA every pipeline in one turn.
+- If the user then wants RCA on one failed build (or asks to dig into the worst failure), pick **one** `buildId`/`webUrl` from that overview and continue with the single-build budget below (`get_run_summary` → …).
+- **Single build URL/id** → skip `list_folder_latest_runs`; use the single-build budget.
+
 ### Call budget / no duplicates
+
+**Folder overview turn:** `list_folder_latest_runs` once. Stop unless the user asks to dig into one build.
 
 Stay within this budget for a normal mixed build (parallel + exclusive):
 
@@ -58,7 +68,7 @@ Budget detail: omit `logId` **once** to list logs, then **one** end-of-log slice
 
 If a tool returns `missingSecrets`, do **not** retry Azure. Ask for a pasted run URL/id plus log snippets, then analyze those.
 
-**Azure tools, one local re-run, and a narrow edit.** Allowed: `get_run_summary`, `list_failed_tests`, `resolve_test_source`, `get_log_slice`, `rerun_local_spec`, `read_automation_source`, and `apply_automation_fix`. Do **not** call host `shell`, `grep`, `read`, `glob`, `ls`, `edit`, or any other filesystem tool — including to open spilled/`agent-tools` files. The host-shell ban does not apply to `rerun_local_spec`: that tool is the only allowed command, and it runs only `ENV=uat npm run test -w projects/mips -- <spec path under projects/mips/tests>` with cwd fixed to `/Users/duong.lemodec.com/Documents/dna-automation-test`. File changes go only through `apply_automation_fix`. Use `resolve_test_source` for local path mapping. If a tool result looks truncated, lower `maxResults` (e.g. 8–12) and/or call `get_log_slice`; never shell-parse JSON. When many failures share one error theme, list the theme once with the cited result ids rather than re-fetching full stacks.
+**Azure tools, one local re-run, and a narrow edit.** Allowed: `list_folder_latest_runs`, `get_run_summary`, `list_failed_tests`, `resolve_test_source`, `get_log_slice`, `rerun_local_spec`, `read_automation_source`, and `apply_automation_fix`. Do **not** call host `shell`, `grep`, `read`, `glob`, `ls`, `edit`, or any other filesystem tool — including to open spilled/`agent-tools` files. The host-shell ban does not apply to `rerun_local_spec`: that tool is the only allowed command, and it runs only `ENV=uat npm run test -w projects/mips -- <spec path under projects/mips/tests>` with cwd fixed to `/Users/duong.lemodec.com/Documents/dna-automation-test`. File changes go only through `apply_automation_fix`. Use `resolve_test_source` for local path mapping. If a tool result looks truncated, lower `maxResults` (e.g. 8–12) and/or call `get_log_slice`; never shell-parse JSON. When many failures share one error theme, list the theme once with the cited result ids rather than re-fetching full stacks.
 
 ### When to call `resolve_test_source`
 

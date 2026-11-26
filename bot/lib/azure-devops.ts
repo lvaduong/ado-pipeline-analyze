@@ -16,6 +16,19 @@ export type ParsedRunRef = {
   raw: string;
 };
 
+export type ParsedFolderRef = {
+  orgUrl: string;
+  project: string;
+  /** ADO folder path, e.g. `\mips-qc\UAT` (leading backslash). */
+  folderPath: string;
+  raw: string;
+};
+
+/** Max pipelines returned by list_folder_latest_runs (token budget). */
+export const MAX_FOLDER_DEFINITIONS = 20;
+/** Max failing test names sampled per pipeline in a folder summary. */
+export const MAX_FOLDER_FAILED_SAMPLE = 5;
+
 export type ToolResultOk<T extends Record<string, unknown>> = T & {
   ok: true;
 };
@@ -81,6 +94,115 @@ export function readCreds():
     return { ok: false, missingSecrets: missing };
   }
   return { ok: true, creds: { orgUrl, pat } };
+}
+
+/**
+ * Normalize an ADO pipeline folder path to `\a\b` form.
+ * Accepts `\mips-qc\UAT`, `/mips-qc/UAT`, `mips-qc/UAT`, URL-encoded scopes.
+ */
+export function normalizeFolderPath(rawPath: string): string | { error: string } {
+  let p = rawPath.trim();
+  if (!p) return { error: "folder path is empty" };
+  try {
+    p = decodeURIComponent(p);
+  } catch {
+    // keep raw
+  }
+  p = p.replace(/\//g, "\\");
+  if (!p.startsWith("\\")) p = `\\${p}`;
+  p = p.replace(/\\+/g, "\\");
+  if (p === "\\") return { error: "folder path is empty" };
+  return p;
+}
+
+/**
+ * Parse a pipeline-folder URL or bare folder path.
+ * Accepts:
+ * - `\mips-qc\UAT` / `/mips-qc/UAT` (needs project via arg or env default)
+ * - https://dev.azure.com/{org}/{project}/_build?definitionScope=%5Cmips-qc%5CUAT
+ * - same on *.visualstudio.com
+ */
+export function parseFolderRef(input: {
+  folderPathOrUrl: string;
+  project?: string;
+  orgUrl?: string;
+}): ParsedFolderRef | { error: string } {
+  const raw = input.folderPathOrUrl.trim();
+  if (!raw) return { error: "folderPathOrUrl is empty" };
+
+  const envOrg = (process.env[ENV_ORG] ?? "").trim().replace(/\/+$/, "");
+  const overrideOrg = input.orgUrl?.trim().replace(/\/+$/, "") || undefined;
+  const overrideProject = input.project?.trim() || undefined;
+
+  // Bare folder path (no scheme)
+  if (!/^https?:\/\//i.test(raw)) {
+    const folderPath = normalizeFolderPath(raw);
+    if (typeof folderPath !== "string") return folderPath;
+    const orgUrl = overrideOrg ?? envOrg;
+    const project = overrideProject ?? "";
+    if (!orgUrl) {
+      return {
+        error:
+          "Bare folder path needs org URL. Set AZURE_DEVOPS_ORG_URL or pass orgUrl.",
+      };
+    }
+    if (!project) {
+      return {
+        error:
+          "Bare folder path needs project. Pass project (e.g. dna-mops-MIPS).",
+      };
+    }
+    return { orgUrl, project, folderPath, raw };
+  }
+
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return { error: `Not a URL or folder path: ${raw.slice(0, 80)}` };
+  }
+
+  const host = url.hostname.toLowerCase();
+  let orgUrl = "";
+  let project = "";
+
+  if (host === "dev.azure.com" || host.endsWith(".dev.azure.com")) {
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length < 2) {
+      return { error: "URL missing org/project path segments" };
+    }
+    orgUrl = `${url.protocol}//${url.host}/${parts[0]}`;
+    project = decodeURIComponent(parts[1] ?? "");
+  } else if (host.endsWith(".visualstudio.com")) {
+    const org = host.split(".")[0] ?? "";
+    orgUrl = `${url.protocol}//${host}`;
+    const parts = url.pathname.split("/").filter(Boolean);
+    const start = parts[0]?.toLowerCase() === "defaultcollection" ? 1 : 0;
+    project = decodeURIComponent(parts[start] ?? "");
+    if (!org || !project) {
+      return { error: "visualstudio.com URL missing org or project" };
+    }
+  } else {
+    return { error: `Unrecognized Azure DevOps host: ${host}` };
+  }
+
+  if (overrideOrg) orgUrl = overrideOrg;
+  if (overrideProject) project = overrideProject;
+
+  const scope =
+    url.searchParams.get("definitionScope") ??
+    url.searchParams.get("path") ??
+    "";
+  if (!scope) {
+    return {
+      error:
+        "URL has no definitionScope (or path) query. Paste a _build?definitionScope=… URL or a bare folder path like \\mips-qc\\UAT.",
+    };
+  }
+  const folderPath = normalizeFolderPath(scope);
+  if (typeof folderPath !== "string") return folderPath;
+
+  return { orgUrl, project, folderPath, raw };
 }
 
 /**
@@ -416,4 +538,52 @@ export const EVAL_FIXTURE_LOG_SLICE = {
     "##[error] Forecast spinbutton /0[.,]60/ missing after selectAutocomplete (ui-visibility)",
     "##[section]Finishing: Run automation tests",
   ].join("\n"),
+};
+
+/** Folder-scope latest-run summary used when session.purpose === "eval". */
+export const EVAL_FIXTURE_FOLDER_LATEST = {
+  ok: true as const,
+  source: "eval-fixture" as const,
+  project: "dna-mops-MIPS",
+  folderPath: "\\mips-qc\\UAT",
+  definitionCount: 2,
+  capped: false,
+  pipelines: [
+    {
+      definitionId: 639,
+      definitionName: "UAT-MIPS-Automation-No-Cron",
+      buildId: 1001,
+      buildNumber: "20261123.1",
+      result: "failed",
+      status: "completed",
+      sourceBranch: "refs/heads/main",
+      webUrl:
+        "https://dev.azure.com/example/Mips/_build/results?buildId=1001",
+      totalTests: 12,
+      passedTests: 10,
+      failedTests: 2,
+      skippedTests: 0,
+      sampleFailedTests: [
+        "[TC 9001] New position submitted",
+        "[TC 9002] Timeline updates",
+      ],
+    },
+    {
+      definitionId: 640,
+      definitionName: "UAT-MIPS-Automation-Cron-Ack",
+      buildId: 1002,
+      buildNumber: "20261123.2",
+      result: "succeeded",
+      status: "completed",
+      sourceBranch: "refs/heads/main",
+      webUrl:
+        "https://dev.azure.com/example/Mips/_build/results?buildId=1002",
+      totalTests: 8,
+      passedTests: 8,
+      failedTests: 0,
+      skippedTests: 0,
+      sampleFailedTests: [],
+    },
+  ],
+  hint: "Folder overview only. For deep RCA, call get_run_summary on one failed buildId.",
 };

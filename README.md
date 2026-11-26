@@ -35,6 +35,8 @@ npm install                              # once
 npx --yes "@grok/agent-sdk@0.7.2" validate --dir .
 npx tsc --noEmit -p .
 npx --yes "@grok/agent-sdk@0.7.2" tool call get_run_summary --dir . --input '{"runUrlOrId":"https://dev.azure.com/example/Mips/_build/results?buildId=1001"}' --json
+npx --yes "@grok/agent-sdk@0.7.2" tool call list_folder_latest_runs --dir . --json \
+  --input '{"folderPathOrUrl":"https://dev.azure.com/MODEC-DnA/dna-mops-MIPS/_build?definitionScope=%5Cmips-qc%5CUAT"}'
 npx --yes "@grok/agent-sdk@0.7.2" run --dir . --message "Analyze https://dev.azure.com/example/Mips/_build/results?buildId=1001"
 npx --yes "@grok/agent-sdk@0.7.2" eval --dir .
 npx --yes "@grok/agent-sdk@0.7.2" dev .
@@ -43,6 +45,7 @@ npx --yes "@grok/agent-sdk@0.7.2" dev .
 
 ## Tools
 
+- `list_folder_latest_runs` — latest build + test counts for every pipeline under a folder / `definitionScope`
 - `get_run_summary` — build / test-run summary
 - `list_failed_tests` — failed tests with error + stack
 - `get_log_slice` — bounded build log slice
@@ -50,7 +53,7 @@ npx --yes "@grok/agent-sdk@0.7.2" dev .
 
 ## Evals / fixtures
 
-- `evals/` — smoke, RCA shape, Azure-tools-only, tool-budget, log-slice-when-thin, resolve-test-source  
+- `evals/` — smoke, RCA shape, Azure-tools-only, tool-budget, log-slice-when-thin, resolve-test-source, folder-latest-runs  
   (`purpose=eval` → inline fixtures, no Azure PAT / no `fixtures/104954` disk reads)
 - `fixtures/104954/` — pinned Azure tool JSON for offline smoke of build 104954 (no secrets).  
   Used when `AZURE_DEVOPS_FIXTURE_BUILD=104954`, `AZURE_DEVOPS_USE_FIXTURES=1`, or PAT unset + matching build URL.
